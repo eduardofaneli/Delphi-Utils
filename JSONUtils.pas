@@ -11,9 +11,10 @@ type
     procedure SetJSONProperty(const Value: TJSONPair);
     function getProperty(const AProperty, AJSON: string): IJSONUtils;
     function getChildProperty(const AParent, AProperty, AJSON: string): IJSONUtils;
-    function ToString(): string;
-    function Value(): string;
+    function getValue(): string;
+    function getPair(): string;
     function formatJSON(const AJSON: string): IJSONUtils;
+    function validateJSON(const AJSON: string): Boolean;
     procedure show(AHandle: HWND);
     property JSONProperty: TJSONPair write SetJSONProperty;
   end;
@@ -28,13 +29,14 @@ type
   public
     function getProperty(const AProperty, AJSON: string): IJSONUtils;
     function getChildProperty(const AParent, AProperty, AJSON: string): IJSONUtils;
-    function ToString(): string;
-    function Value(): string;
+    function getValue(): string;
+    function getPair(): string;
     function formatJSON(const AJSON: string): IJSONUtils;
     procedure show(AHandle: HWND);
     class function new(): IJSONUtils;
     constructor Create;
     destructor Destroy(); override;
+    function validateJSON(const AJSON: string): Boolean;
     property JSONProperty: TJSONPair write SetJSONProperty;
   end;
 
@@ -518,14 +520,14 @@ begin
 
   FJSONArray := (FJSON.Get(AParent).JsonValue as TJSONArray);
 
-  FJSONPair.Parse(BytesOf(FJSONArray.Get(0).ToJSON), 0);
+  FJSONPair.Parse(BytesOf(FJSONArray.Items[0].ToJSON), 0);
 
   Result := getProperty(AProperty, FJSONPair.ToString);
 end;
 
 function TJSONUtils.getProperty(const AProperty, AJSON: string): IJSONUtils;
 begin
-  FJSON.Parse(BytesOf(AJSON), 0);
+  FJSON.Parse(BytesOf(UTF8Encode(AJSON)), 0);
 
   if Assigned(FJSON.Get(AProperty)) then
     FJSONProperty := FJSON.get(AProperty);
@@ -564,14 +566,26 @@ begin
   end;
 end;
 
-function TJSONUtils.ToString: string;
+function TJSONUtils.getValue(): string;
 begin
-  Result := FJSONProperty.JsonValue.ToString;
+  if Assigned(FJSONProperty) then
+    Result := FJSONProperty.JsonValue.ToString;
 end;
 
-function TJSONUtils.Value: string;
+function TJSONUtils.validateJSON(const AJSON: string): Boolean;
 begin
-  Result := FJSONProperty.ToJSON;
+  try
+    Result := FJSON.Parse(BytesOf(AJSON), 0) >= 0;
+  except
+    on E: EJSONException do
+      raise Exception.Create(E.Message);
+  end;
+end;
+
+function TJSONUtils.getPair(): string;
+begin
+  if Assigned(FJSONProperty) then
+    Result := FJSONProperty.ToJSON;
 end;
 
 end.
